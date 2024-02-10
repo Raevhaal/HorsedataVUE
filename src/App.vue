@@ -270,7 +270,7 @@ function handlePageSizeChange(e: any) {
             </div>
             <pre>{{ JSON.stringify(pagination, null, 2) }}</pre>
         </div>
-    </div>
+    </div> 
 </template>
 
 <style>
