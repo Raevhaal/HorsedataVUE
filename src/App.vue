@@ -7,110 +7,69 @@ import {
     useVueTable,
     createColumnHelper,
     PaginationState,
+    SortingState,
+    getSortedRowModel,
 } from "@tanstack/vue-table";
 
-import useService from "./useService";
+import getFrameData from "./getFrameData";
 
-type Move = {
-    characters: string;
-    stance: string;
-    command: string;
-    commandDisplay: string;
-    hitlevel: string;
-    impact: number;
-    damage: number;
-    hlock: number;
-    onHit: number;
-    onCounterHit: number;
-    guardBurst: number;
-    notes: string;
-};
+import useService from "./useService";
+import { Move } from "./types.ts";
 
 const INITIAL_PAGE_INDEX = 0;
 const INITIAL_PAGE_SIZE = 10;
 
+const sorting = ref<SortingState>([]);
+
 const columnHelper = createColumnHelper<Move>();
 
 const columns = [
-    columnHelper.accessor(
-        (post: Move) => post.characters, 
-        {
-            header: "Character",
-            // cell: (props: { value: any }) => props.value,
-            enableResizing: true,
-            size: 150,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.stance, 
-        {
-            header: "Stance",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.commandDisplay, 
-        {
-            header: "Command",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.hitlevel, 
-        {
-            header: "Hit Level",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.impact, 
-        {
-            header: "Impact",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.damage, 
-        {
-            header: "Damage",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.hlock, 
-        {
-            header: "H Lock",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.onHit, 
-        {
-            header: "On Hit",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.onCounterHit, 
-        {
-            header: "On Counter Hit",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.guardBurst, 
-        {
-            header: "Guard Burst",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
-    columnHelper.accessor(
-        (post: Move) => post.notes, 
-        {
-            header: "Notes",
-            // cell: (props: { value: any }) => props.value,
-        }
-    ),
+    columnHelper.accessor((move: Move) => move.characters, {
+        header: "Character",
+        // cell: (props: { value: any }) => props.value,
+        enableResizing: true,
+        size: 150,
+    }),
+    columnHelper.accessor((move: Move) => move.stance, {
+        header: "Stance",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.commandDisplay, {
+        header: "Command",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.hitlevel, {
+        header: "Hit Level",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.impact, {
+        header: "Impact",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.damage, {
+        header: "Damage",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.block, {
+        header: "Block",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.onHit, {
+        header: "On Hit",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.onCounterHit, {
+        header: "On Counter Hit",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.guardBurst, {
+        header: "Guard Burst",
+        // cell: (props: { value: any }) => props.value,
+    }),
+    columnHelper.accessor((move: Move) => move.notes, {
+        header: "Notes",
+        // cell: (props: { value: any }) => props.value,
+    }),
 ];
 
 const pageSizes = [10, 20, 30, 40, 50];
@@ -133,10 +92,22 @@ const table = useVueTable({
     },
 
     columns,
+
     state: {
         pagination: pagination.value,
+        get sorting() {
+            return sorting.value;
+        },
     },
+    onSortingChange: (updaterOrValue) => {
+        sorting.value =
+            typeof updaterOrValue === "function"
+                ? updaterOrValue(sorting.value)
+                : updaterOrValue;
+    },
+
     manualPagination: true,
+
     onPaginationChange: (updater) => {
         if (typeof updater === "function") {
             setPagination(
@@ -149,7 +120,10 @@ const table = useVueTable({
             setPagination(updater);
         }
     },
+
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+
     debugTable: true,
 });
 
@@ -176,6 +150,7 @@ function handlePageSizeChange(e: any) {
 
 <template>
     <div class="p-2">
+        <!-- table -->
         <table>
             <thead>
                 <tr
@@ -186,12 +161,19 @@ function handlePageSizeChange(e: any) {
                         v-for="header in headerGroup.headers"
                         :key="header.id"
                         :colSpan="header.colSpan"
+                        :class="header.column.getCanSort() ? 'cursor-pointer select-none' : ''"
+                        @click="header.column.getToggleSortingHandler()?.($event)"
                     >
                         <FlexRender
                             v-if="!header.isPlaceholder"
                             :render="header.column.columnDef.header"
                             :props="header.getContext()"
                         />
+                        {{
+                            { asc: ' 🔼', desc: ' 🔽' }[
+                                header.column.getIsSorted() as string
+                            ]
+                        }}
                     </th>
                 </tr>
             </thead>
@@ -207,7 +189,7 @@ function handlePageSizeChange(e: any) {
             </tbody>
         </table>
 
-
+        <!-- pager -->
         <div className="h-2">
             <div className="flex items-center gap-2">
                 <button
@@ -270,7 +252,7 @@ function handlePageSizeChange(e: any) {
             </div>
             <pre>{{ JSON.stringify(pagination, null, 2) }}</pre>
         </div>
-    </div> 
+    </div>
 </template>
 
 <style>
